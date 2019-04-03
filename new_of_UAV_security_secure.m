@@ -224,8 +224,8 @@ for Pindex = 1:length(P0)
     % Totally
         F_gamma_d =@(x) 1 - (1- F_gamma_d_k(x).^M).*(1- F_gamma_d_k(x));
         F_gamma =@(x)  F_gamma_d(x) .* f_gamma_e(x);
-        pr_secrecy = quadgk(F_gamma,0,Inf);      
-      %  pr_secrecy = sum(F);
+        F = chebfun(F_gamma,[0,Inf]);      
+        pr_secrecy = sum(F);
     pr_secrecy_analysis(Pindex) = pr_secrecy
     
     

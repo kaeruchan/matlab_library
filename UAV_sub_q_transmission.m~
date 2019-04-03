@@ -1,0 +1,232 @@
+% Clean all residual data
+clear all;
+close all;
+clc;
+
+% parameter library
+N_max = 10000;
+M=10; %The number of relay
+V=10; %Rician Factor
+Omega = 1; 
+Pj = 5; %Power of Jammer (dBm)
+P0 = 25; %Power of Signal (dBm)
+gamma_k = 10; %threshold SNR (dB)
+N0 = 0; %Power of noise (dBm)
+%beta = 0.5; %time ratio
+q = 0.1:0.1:0.9; % Bernoulli Variance
+lambda = 0.1; %Chernoff-bound parameter
+
+% Analysis
+
+pr_anal_sub = zeros(1,length(q));
+pr_simu_sub = zeros(1,length(q));
+pr_simple = zeros(1,length(q));
+pr_anal_sub_infty_3 = zeros(1,length(q));
+pr_anal_sub_infty_5 = zeros(1,length(q));
+pr_anal_sub_infty_7 = zeros(1,length(q));
+
+
+%Library (Pr_type_channel_q_N0)
+
+
+
+for qindex = 1:length(q)
+    
+     % Parameters (dbm --> watt)    
+    p_Pj = 10^(Pj/10)*10^(-3);
+    p_P0 = 10^(P0/10)*10^(-3);
+    p_gamma_k = 10^(gamma_k/10);
+    p_N0 = 10^(N0/10)*10^(-3);
+    
+    
+    % main
+    tau1 = 2*(1-q(qindex))*q(qindex)
+    
+   % tau3
+
+    tau3 = q(qindex)^2
+    
+
+    
+    %tau2
+
+    %initial sum part
+    sum_tau2=0;
+    %sum part
+    for k = 0:1:M-2
+        for j = 0:1:M-k-2
+            
+            sum_tau2 = sum_tau2+ (-1)^j *pochhammer(2+k-M,j) /factorial(j) ...
+                     * (p_P0*(M-1)/(p_Pj*p_gamma_k))^((j+k)/2) ...
+                     * ((p_P0+p_Pj*p_gamma_k)/p_P0)^k ...
+                     * besseli(2+j+k-M, 2*V*sqrt(p_P0*p_Pj*(M-1)*p_gamma_k)/(p_P0+p_Pj*p_gamma_k));
+            
+        end
+    end
+                 
+    tau2 = 2*(1-q(qindex))*q(qindex)*(1 ...
+         + exp(-V*(p_P0+(M-1)*p_Pj*p_gamma_k)/(p_P0+p_Pj*p_gamma_k))*(M-1)*(p_P0+p_Pj*p_gamma_k)/p_P0 ...
+         * (p_P0*p_Pj*p_gamma_k/((M-1)*(p_P0+p_Pj*p_gamma_k)^2))^(M/2) ...
+         * sum_tau2 ...
+         - marcumq(sqrt(2*p_P0*V/(p_P0+p_Pj*p_gamma_k)), ...
+           sqrt(2*V*(M-1)*p_Pj*p_gamma_k/(p_P0+p_Pj*p_gamma_k)),1))
+    
+    % tau4
+    
+
+    % initial sum part
+    sum_tau4=0;
+    %sum part
+    for k = 0:1:M-1
+        for j = 0:1:M-k-1
+                  
+            sum_tau4 = sum_tau4 ...
+                     + (-1)^j * pochhammer(1+k-M,j) / factorial(j) ...
+                     * (p_P0*(M-1)/(2*p_Pj*p_gamma_k))^((j+k)/2) ...
+                     * ((p_P0 +p_Pj*p_gamma_k)/p_P0)^k ...
+                     * besseli(2+j+k-M, ...
+                            2*V*sqrt(2*p_P0*p_Pj*(M-1)*p_gamma_k)/(p_P0+p_Pj*p_gamma_k));
+        end
+    end
+    
+    tau4 = q(qindex)^2 ...
+           * (1 ...
+           + 2^((M-2)/2) ...
+           * exp(-(V*(2*p_P0+(M-1)*p_Pj*p_gamma_k)/(p_P0+p_Pj*p_gamma_k))) ...
+           * (M-1)*p_Pj*p_gamma_k/p_P0 ...
+           * (p_P0*p_Pj*p_gamma_k/((M-1)*(p_P0+p_Pj*p_gamma_k)^2))^(M/2) ...
+           * sum_tau4 ...
+           - marcumq(2*sqrt(p_P0*V/(p_P0+p_Pj*p_gamma_k)), ...
+           sqrt(2*V*(M-1)*p_Pj*p_gamma_k/(p_P0+p_Pj*p_gamma_k)),2))
+    
+    %analysis result
+    pr_anal_sub(qindex) = 1-(tau1-tau2+tau3-tau4)
+    
+        %simulation part
+    
+    %initial parameters
+    outage_counter=0;
+    
+    for N = 1:N_max
+        i_sum_1 = 0;
+        i_sum_2 = 0;
+        j_2 = 0;
+        
+        
+        for Mindex = 1:M-1
+            j_2 = j_2 + (random('rician',sqrt(V/(1+V)*Omega),sqrt(Omega/(2*(V+1)))))^2;
+        end
+        
+        
+        
+        f_1 = (random('rician',sqrt(V/(1+V)*Omega),sqrt(Omega/(2*(V+1)))))^2;
+        f_2 = (random('rician',sqrt(V/(1+V)*Omega),sqrt(Omega/(2*(V+1)))))^2;
+
+       %bernoulli distribution
+        i_1 = random('binomial',1,q(qindex));
+        i_2 = random('binomial',1,q(qindex));
+       
+        
+        if (p_P0*i_1*f_1/(2*p_N0+j_2*p_Pj)+p_P0*i_2*f_2/(2*p_N0+j_2*p_Pj))< p_gamma_k
+            outage_counter =outage_counter+1;
+        end
+    end
+    pr_simu_sub(qindex) = outage_counter/N_max
+                     
+%     pr_anal_sub_infty_3(Pindex) = (1-0.3)^2;   
+%     pr_anal_sub_infty_5(Pindex) = (1-0.5)^2;
+%     pr_anal_sub_infty_7(Pindex) = (1-0.7)^2;
+    
+    
+end
+
+
+
+
+%plot 
+p1=semilogy(q,pr_anal_sub_3_3,'-');
+ax = gca;
+ax.FontSize=16;
+ax.YLim = [0.03,1];
+grid on
+p1.Color='Red';
+p1.LineWidth=2;
+xlabel('q','FontSize',16)
+ylabel('Eavesdropping Channel Transmission Outage Probability','FontSize',12)
+
+hold on;
+p2=semilogy(P0,pr_simu_sub_3_3,'v');
+p2.Color='Red';
+p2.MarkerSize=10;
+p2.LineWidth=2;
+
+p3=semilogy(P0,pr_anal_sub_6_3,'-');
+p3.Color='Green';
+p3.LineWidth=2;
+
+p4=semilogy(P0,pr_simu_sub_6_3,'o');
+p4.Color='Green';
+p4.MarkerSize=10;
+
+p5=semilogy(P0,pr_anal_sub_10_3,'-');
+p5.Color='Blue';
+p5.LineWidth=2;
+
+p6=semilogy(P0,pr_simu_sub_10_3,'^');
+p6.Color='Blue';
+p6.MarkerSize=10;
+
+p7=semilogy(P0,pr_anal_sub_3_5,'-');
+p7.Color='Red';
+p7.LineWidth=2;
+
+p8=semilogy(P0,pr_simu_sub_3_5,'v');
+p8.Color='Red';
+p8.MarkerSize=10;
+
+p9=semilogy(P0,pr_anal_sub_6_5,'-');
+p9.Color='Green';
+p9.LineWidth=2;
+
+p10=semilogy(P0,pr_simu_sub_6_5,'o');
+p10.Color='Green';
+p10.MarkerSize=10;
+
+p11=semilogy(P0,pr_anal_sub_10_5,'-');
+p11.Color='Blue';
+p11.LineWidth=2;
+
+p12=semilogy(P0,pr_simu_sub_10_5,'^');
+p12.Color='Blue';
+p12.MarkerSize=10;
+
+p13=semilogy(P0,pr_anal_sub_3_7,'-');
+p13.Color='Red';
+p13.LineWidth=2;
+
+p14=semilogy(P0,pr_simu_sub_3_7,'v');
+p14.Color='Red';
+p14.MarkerSize=10;
+
+p15=semilogy(P0,pr_anal_sub_6_7,'-');
+p15.Color='Green';
+p15.LineWidth=2;
+
+p16=semilogy(P0,pr_simu_sub_6_7,'o');
+p16.Color='Green';
+p16.MarkerSize=10;
+
+p17=semilogy(P0,pr_anal_sub,'-');
+p17.Color='Blue';
+p17.LineWidth=2;
+
+p18=semilogy(P0,pr_simu_sub,'^');
+p18.Color='Blue';
+p18.MarkerSize=10;
+
+
+p0=semilogy(P0,pr_simple,'-');
+p0.Color='Black';
+p0.LineWidth=2;
+
+

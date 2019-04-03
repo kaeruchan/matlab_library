@@ -10,7 +10,7 @@ M=10; %The number of relay
 V=5; %Rician Factor
 Omega = 2; 
 Pj = 15; %Power of Jammer (dBm)
-P0 = 0:20; %Power of Signal (dBm)
+P0 = 20:1:50; %Power of Signal (dBm)
 gamma_k = 20; %threshold SNR (dBm)
 N0 = -150; %Power of noise (dBm)
 %beta = 0.5; %time ratio
@@ -31,10 +31,6 @@ for Pindex = 1:length(P0)
   
 
       
-      
-     pr_secrecy=0;
-     f_gamma_e = 0;
-    for n=1:n_MAX
 
       
         % f_gamma_e
@@ -106,14 +102,15 @@ for Pindex = 1:length(P0)
             .* V.*(M-1).*p_P0.^2 .*p_Pj .*x ...
             .* besseli(0,2.*V.*sqrt((M-1) .* p_P0 .*p_Pj .* x)./(p_P0 + p_Pj .* x)) ...
             + 2.* V .* p_P0.^2 .* p_Pj .* x ...
-            .* (marcumq(sqrt(2.*V.*p_P0./(p_P0 + p_Pj .* x )), sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),2) ...
-            - marcumq(sqrt(2.*V.*p_P0./(p_P0 + p_Pj .* x )), sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),1)) ...
+            .* (marcumq(sqrt(2.*V.*p_P0./(p_P0 + p_Pj .* x )), ...
+                        sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),2) ...
+            - marcumq(sqrt(2.*V.*p_P0./(p_P0 + p_Pj .* x )), ...
+                      sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),1)) ...
             + sum_T2(x));
         %T4
         %sum k,j
         for k=0:1:M-1
-            for j=0:1:M-k-1
-               
+            for j=0:1:M-k-1               
                 sum_T4 =@(x) sum_T4(x) ...
                        +  1./(p_P0 .* factorial(j)) ...
                        .* 2.^((2-j-k+M)/2) ...
@@ -190,8 +187,8 @@ for Pindex = 1:length(P0)
            .* besseli(1,2.*V .* sqrt(2.*(M-1).*p_Pj .*p_P0)./(p_P0 + p_Pj .* x)) ...
            -  1./ (p_P0 + p_Pj .* x).^2 ...
            .* 2 .* V .* p_P0 .* p_Pj ...
-           .* (marcumq(2 .* sqrt(V.*p_P0./(p_P0 + p_Pj .* x )), sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),3) ...
-           -   marcumq(2 .* sqrt(V.*p_P0./(p_P0 + p_Pj .* x )), sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),2) ...
+           .* (marcumq(2 .* sqrt(V.*p_P0./(p_P0 + p_Pj .* x )), sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),2) ...
+           -   marcumq(2 .* sqrt(V.*p_P0./(p_P0 + p_Pj .* x )), sqrt(2.*V.*(M-1).*(p_Pj .*x)./(p_P0 + p_Pj .*x)),3) ...
            +  sum_T4(x)));
     
         f_gamma_e =@(x)  T2(x)+T4(x);
@@ -225,11 +222,10 @@ for Pindex = 1:length(P0)
         F_gamma_d_k =@(x) marcumq(sqrt(2*(M-1)*p_Pj*V.*(2.^(2*R).*(1+x)-1)./(p_P0+p_Pj*(2.^(2*R).*(1+x)-1))), ...
                                   sqrt(2.*V.*p_P0./(p_P0 + p_Pj .* (2.^(2*R).*(1+x)-1))),M-1)-sum_main(x);
     % Totally
-        F_gamma_d =@(x) 1 - (1- F_gamma_d_k(x)).^M.*(1- F_gamma_d_k(x));
+        F_gamma_d =@(x) 1 - (1- F_gamma_d_k(x).^M).*(1- F_gamma_d_k(x));
         F_gamma =@(x)  F_gamma_d(x) .* f_gamma_e(x);
-        pr_secrecy = integral(F_gamma,0,Inf);      
-        %pr_secrecy = sum(F);
-    end
+        F = (F_gamma,0,Inf);      
+        pr_secrecy = sum(F);
     pr_secrecy_analysis(Pindex) = pr_secrecy
     
     
@@ -306,3 +302,28 @@ for Pindex = 1:length(P0)
     pr_secrecy_simulation(Pindex) = counter/N_max
     
 end
+
+% plot
+p1=semilogy(P0,pr_securecy_analysis,'-');
+ax = gca;
+ax.FontSize=16;
+ax.YLim = [0.01,1];
+grid on
+p1.Color = 'Red';
+p1.LineWidth = 2;
+xlabel('Transmission Power (P_0)','FontSize',16);
+ylabel('Secrecy Outage Probability','FontSize',16);
+
+hold on %other lines
+
+p2 = semilogy(P0,pr_secrecy_simulation,'--v');
+p2.Color = 'Red';
+p2.MarkerSize = 10;
+p2.LineWidth = 2;
+
+lgd=legend([p1,p2],'Anal.','Simu.');
+lgd.FontSize = 16;
+lgd.Location = 'southwest';
+
+fname = '/users/shin/dropbox/programming/matlab';
+saveas(p1,fullfile(fname,'sec_fig'),'fig');
