@@ -101,7 +101,7 @@ for Pindex = 1:length(P0)
     
     
     
-        %M=6;
+    %M=6;
     M=6;
     
     
