@@ -1,7 +1,7 @@
 close all;
 clc;
 
-% Parameter library
+%% Parameter library
 N_max = 100000;
 M=5; %All relays
 K=3; %Number of transmission
@@ -15,7 +15,7 @@ N0 = 0; %Power of noise (dBm)
 q = 0.3; % Bernoulli Variance
 kappa=0.3;
 
-%initial
+%% initial
 pr_anal_outage = zeros(1,length(P0));
 pr_simu_outage1 = zeros(1,length(P0));
 pr_simu_outage2 = zeros(1,length(P0));
@@ -27,14 +27,14 @@ pr_simu_outage2 = zeros(1,length(P0));
 
 for Pindex = 1 : length(P0)
 
-    % Parameters (dbm --> watt)    
+    %% Parameters (dbm --> watt)    
     p_Pj = 10^(Pj/10)*10^(-3);
     p_P0 = 10^(P0(Pindex)/10)*10^(-3);
     p_N0 = 10^(N0/10)*10^(-3);
     p_gamma_k = 10^(gamma_k/10);
     
     
-    %initial
+    %% initial
     R_sr = zeros(1,M);
     R_sr2 = zeros(1,M);
     R_sr2_2 = zeros(1,M-1);
@@ -45,18 +45,18 @@ for Pindex = 1 : length(P0)
 
     
     
-    % Analysis
+    %% Analysis
     
     
-    % Simulation
+    %% Simulation
     for N = 1:N_max
         
-        %initial parameter
+        %% initial parameter
         gamma_main_simu1 = 0;
         %gamma_main_simu2 = 0;
         
         
-        %Generate random number
+        %% Generate random number
         for Mnum = 1:M
             R_sr(Mnum) = (random('rayleigh',sqrt(1/(2*lambda))))^2;
             R_sr2(Mnum) = (random('rayleigh',sqrt(1/(2*lambda))))^2;
@@ -102,6 +102,8 @@ for Pindex = 1 : length(P0)
 
 end
 
+
+%% plot
 
 p1=semilogy(P0,pr_simu_outage1,'-');
 ax = gca;
