@@ -19,7 +19,7 @@ kappa=0.3;
 pr_anal_outage = zeros(1,length(P0));
 pr_simu_outage1 = zeros(1,length(P0));
 pr_simu_outage2 = zeros(1,length(P0));
-
+pr_anal_line
 
 
 
@@ -27,6 +27,8 @@ pr_simu_outage2 = zeros(1,length(P0));
 
 for Pindex = 1 : length(P0)
 
+    
+    
     %% Parameters (dbm --> watt)    
     p_Pj = 10^(Pj/10)*10^(-3);
     p_P0 = 10^(P0(Pindex)/10)*10^(-3);

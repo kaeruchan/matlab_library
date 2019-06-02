@@ -1,5 +1,5 @@
-close all;
-clc;
+%% Clear
+close all;clc;
 
 %% Parameter library
 N_max = 50000;
@@ -56,17 +56,18 @@ for Pindex = 1 : length(P0)
     
     
     % one hop outage
-    p_out_one_ORS = 1 - marcumq(sqrt(2*V),sqrt(2*(V+1)/Omega)*sqrt(p_N0*p_gamma_th/(kappa*p_P0)));
+    MGF_ORS_one_hop = @(s) (1 - q + exp(-V + V*(V+1)/(1+V+s*Omega))*q*(1+V)/(1+V+s*Omega))^2;
     
-    pr_anal_ORS_outage(Pindex) = 1 - (1 - (p_out_one_ORS)^M)*(1-p_out_one_ORS);
+    
+    
+    pr_anal_ORS_outage(Pindex) = euler_inversion(MGF_ORS_one_hop, p_gamma_th * p_N0/(kappa* p_P0));
     
     
     % ORSJ
     
-    p_out_one_ORSJ = marcumq(sqrt(2 * V * p_Pj * p_gamma_th/(p_P0 + p_Pj * p_gamma_th)), ...
-                       sqrt(2 * V * p_P0 /(p_P0 + p_Pj * p_gamma_th)),1) ...
-                     - exp(-V)*p_P0/(p_P0 + p_Pj * p_gamma_th) ...
-                     * besseli(0, 2*V*sqrt(p_P0 * p_Pj * p_gamma_th)/(p_P0 + p_Pj*p_gamma_th));
+    % 
+    
+    p_out_one_ORSJ = 
     
     pr_anal_ORSJ_outage(Pindex) = 1 - (1 - (p_out_one_ORSJ)^M)...
                         * (1- p_out_one_ORSJ);

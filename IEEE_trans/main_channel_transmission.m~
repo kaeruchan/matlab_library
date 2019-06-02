@@ -2,19 +2,19 @@ close all;
 clc;
 
 %% Parameter library
-N_max = 50000;
-M=10; %All relays
-K=5; %Number of transmission
+N_max = 100000;
+M=5; %All relays
+K=3; %Number of transmission
 n=3; %Number of jammers
 Pj = 5; %Power of Jammer (dBm)
-P0 = 0:2:40; %Power of Signal (dBm)
+P0 = 0:1:50; %Power of Signal (dBm)
 gamma_th = 10; %threshold SNR (dB)
-N0 = 0; %Power of noise (dBm)
+N0 = -300; %Power of noise (dBm)
 q = 0.3; % Bernoulli Variance
 kappa=0.3;
 
 % Channel -- Rician
-V = 10; % Rician factor
+V = 5; % Rician factor
 Omega = 1; % Rician omega
 
 
@@ -277,10 +277,4 @@ p7=semilogy(P0,pr_line_index,'-');
 p7.LineWidth = 2;
 p7.Color = 'Black';
 
-% Brand
-lgd=legend([p7,p2,p4,p6],'Anal.','ORS','ORSJ','ORSMJ');
-lgd.Location = 'southwest';
-lgd.FontSize = 14;
-
-fname = '/users/shin/dropbox/programming/matlab';
-saveas(p1,fullfile(fname,'main_fig_j'),'fig');
+lgd=leg
