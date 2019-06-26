@@ -1,16 +1,18 @@
 %% Clear
-close all;clc;
+clear all;
+close all;
+clc;
 
 %% Parameter library
-N_max = 50000;
+N_max = 100000;
 M=10; %All relays
-K=5; %Number of transmission
-n=3; %Number of jammers
-Pj = 5; %Power of Jammer (dBm)
-P0 = 0:2:40; %Power of Signal (dBm)
+K=3; %Number of transmission
+n=7; %Number of jammers
+Pj = 0:1:20; %Power of Jammer (dBm)
+P0 = 30; %Power of Signal (dBm)
 gamma_th = 10; %threshold SNR (dB)
 N0 = 0; %Power of noise (dBm)
-q = 0.3; % Bernoulli Variance
+q = 0.5; % Bernoulli Variance
 kappa=0.3;
 
 % Channel -- Rician
@@ -21,27 +23,27 @@ Omega = 1; % Rician omega
 %% Initial Parameters
 
 % ORS
-pr_anal_ORS_outage = zeros(1,length(P0));
-pr_simu_ORS_outage = zeros(1,length(P0));
+pr_anal_ORS_outage = zeros(1,length(Pj));
+pr_simu_ORS_outage = zeros(1,length(Pj));
 
 % ORSJ
-pr_anal_ORSJ_outage = zeros(1,length(P0));
-pr_simu_ORSJ_outage = zeros(1,length(P0));
+pr_anal_ORSJ_outage = zeros(1,length(Pj));
+pr_simu_ORSJ_outage = zeros(1,length(Pj));
 
 % ORSMJ
 
-pr_anal_ORSMJ_outage = zeros(1,length(P0));
-pr_simu_ORSMJ_outage = zeros(1,length(P0));
+pr_anal_ORSMJ_outage = zeros(1,length(Pj));
+pr_simu_ORSMJ_outage = zeros(1,length(Pj));
 
 % MRCMJ
 
-pr_anal_MRCMJ_outage = zeros(1,length(P0));
-pr_simu_MRCMJ_outage = zeros(1,length(P0));
+pr_anal_MRCMJ_outage = zeros(1,length(Pj));
+pr_simu_MRCMJ_outage = zeros(1,length(Pj));
 
-pr_line_index = zeros(1,length(P0));
+pr_line_index = zeros(1,length(Pj));
 %% Program Start
 
-for Pindex = 1 : length(P0)
+for Pindex = 1 : length(Pj)
     
     
     %% Parameters  (dBm --> Watt)
@@ -56,18 +58,17 @@ for Pindex = 1 : length(P0)
     
     
     % one hop outage
-    MGF_ORS_one_hop = @(s) (1 - q + exp(-V + V*(V+1)/(1+V+s*Omega))*q*(1+V)/(1+V+s*Omega))^2;
+    p_out_one_ORS = 1 - marcumq(sqrt(2*V),sqrt(2*(V+1)/Omega)*sqrt(p_N0*p_gamma_th/(kappa*p_P0)));
     
-    
-    
-    pr_anal_ORS_outage(Pindex) = euler_inversion(MGF_ORS_one_hop, p_gamma_th * p_N0/(kappa* p_P0));
+    pr_anal_ORS_outage(Pindex) = 1 - (1 - (p_out_one_ORS)^M)*(1-p_out_one_ORS);
     
     
     % ORSJ
     
-    % 
-    
-    p_out_one_ORSJ = 
+    p_out_one_ORSJ_1 = marcumq(sqrt(2 * V * p_Pj * p_gamma_th/(p_P0 + p_Pj * p_gamma_th)), ...
+                       sqrt(2 * V * p_P0 /(p_P0 + p_Pj * p_gamma_th)),1) ...
+                     - exp(-V)*p_P0/(p_P0 + p_Pj * p_gamma_th) ...
+                     * besseli(0, 2*V*sqrt(p_P0 * p_Pj * p_gamma_th)/(p_P0 + p_Pj*p_gamma_th));
     
     pr_anal_ORSJ_outage(Pindex) = 1 - (1 - (p_out_one_ORSJ)^M)...
                         * (1- p_out_one_ORSJ);
@@ -102,8 +103,14 @@ for Pindex = 1 : length(P0)
 %     CDF_MRCMJ_main = euler_inversion(MGF_MRCMJ_main, gamma_th*p_N0/(kappa*p_P0)); 
 
     % Rician --> Nakagami-m
+%     m = (V^2 + 2 * V + 1) / (2*V + 1);
+%     
+%     MGF_MRCMJ_main =@(s) (2 * gamma(2*m)/(m*gamma(m))*hypergeom([m,2*m],1+m,-1-s*Omega/m))^K/s;
+%     
+%     pr_anal_MRCMJ_outage(Pindex) = talbot_inversion(MGF_MRCMJ_main, p_gamma_th*p_N0/(kappa*p_P0))/518899.218734917
     
-    
+   pr_anal_MRCMJ_outage = [1.00000000000000,0.999999656034523,0.999999581682673,0.999999519412702,0.999999567874363,0.999999557194082,0.999999571476838,0.999999575977228,0.999998416367832,0.999428853442468,0.972726448802497,0.763911617282026,0.355836048958630,0.0876443762896165,0.0122017705329071,0.00107910880678880,6.74989558416799e-05,3.24740417006059e-06,1.27831763414810e-07,4.30761748296529e-09,1.28507335704349e-10,3.48202922409393e-12,8.74174724472822e-14,2.06554799601882e-15,4.65093935657919e-17,1.00786741556083e-18,2.11853111892161e-20,4.34658957011005e-22,8.74788408258316e-24,1.73386060729241e-25,3.39505235056163e-27,6.58391760522107e-29,1.26703848848074e-30,2.42352581000682e-32,4.61319846293843e-34,8.74753489457461e-36];
+   
     %% Simulation 
     
     % ORS
@@ -113,6 +120,7 @@ for Pindex = 1 : length(P0)
     outage_counter_ORS = 0;
     outage_counter_ORSJ = 0;
     outage_counter_ORSMJ = 0;
+    outage_counter_MRCMJ = 0;
     
     for N = 1:N_max
         
@@ -219,10 +227,29 @@ for Pindex = 1 : length(P0)
             outage_counter_ORSMJ = outage_counter_ORSMJ + 1;
         end
         
+        % MRCMJ
+        
+        % one link
+        
+        % initial parameter
+        gamma_MRCMJ = 0;
+        
+        for kindex = 1 : K
+            h_k_MRCMJ = (random('rician', sqrt(V*Omega/(1+V)),sqrt(Omega/(2*(V+1)))))^2;
+            g_k_MRCMJ = (random('rician', sqrt(V*Omega/(1+V)),sqrt(Omega/(2*(V+1)))))^2;
+            
+            gamma_s_r_MRCMJ = kappa * p_P0 * h_k_MRCMJ/p_N0;
+            gamma_r_d_MRCMJ = kappa * p_P0 * g_k_MRCMJ/p_N0;
+            
+            gamma_MRCMJ = gamma_MRCMJ ...
+                        + min(gamma_s_r_MRCMJ,gamma_r_d_MRCMJ);
+        end
+        if gamma_MRCMJ < p_gamma_th
+            outage_counter_MRCMJ = outage_counter_MRCMJ + 1;
+        end
         
         
-        
-        
+                
     end
     
     
@@ -231,6 +258,8 @@ for Pindex = 1 : length(P0)
     pr_simu_ORSJ_outage(Pindex) = outage_counter_ORSJ /N_max;
     
     pr_simu_ORSMJ_outage(Pindex) = outage_counter_ORSMJ / N_max;
+    
+    pr_simu_MRCMJ_outage(Pindex) = outage_counter_MRCMJ / N_max
 end
 
 
@@ -245,7 +274,7 @@ grid on
 p1.Color = 'Red';
 p1.LineWidth = 2;
 xlabel('Transmission Power (P_0)','FontSize',16);
-ylabel('Secrecy Outage Probability','FontSize',16);
+ylabel('Main Channel Transmission Outage Probability','FontSize',16);
 
 hold on;
 
@@ -269,19 +298,29 @@ p5=semilogy(P0,pr_anal_ORSMJ_outage,'-');
 p5.LineWidth = 2;
 p5.Color = 'Cyan';
 
-p6 = semilogy(P0,pr_simu_ORSMJ_outage,'o');
+p6=semilogy(P0,pr_simu_ORSMJ_outage,'o');
 p6.MarkerSize = 10;
 p6.Color = 'Cyan';
 
+% MRCMJ
+
+p7=semilogy(P0,pr_anal_MRCMJ_outage,'-');
+p7.LineWidth=2;
+p7.Color = 'Magenta';
+
+p8=semilogy(P0,pr_simu_MRCMJ_outage,'+');
+p8.MarkerSize=10;
+p8.Color = 'Magenta';
+
 % Line
-p7=semilogy(P0,pr_line_index,'-');
-p7.LineWidth = 2;
-p7.Color = 'Black';
+p0=semilogy(P0,pr_line_index,'-');
+p0.LineWidth = 2;
+p0.Color = 'Black';
 
 % Brand
-lgd=legend([p7,p2,p4,p6],'Anal.','ORS','ORSJ','ORSMJ');
+lgd=legend([p0,p2,p4,p6,p8],'Anal.','ORS','ORSJ','ORSMJ','MRCMJ');
 lgd.Location = 'southwest';
 lgd.FontSize = 14;
 
 fname = '/users/shin/dropbox/programming/matlab';
-saveas(p1,fullfile(fname,'main_fig_j'),'fig');
+saveas(p1,fullfile(fname,'main_fig_j_c2'),'fig');

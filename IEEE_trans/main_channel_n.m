@@ -1,14 +1,16 @@
 %% Clear
-close all;clc;
+clear all;
+close all;
+clc;
 
 %% Parameter library
-N_max = 50000;
+N_max = 100000;
 M=10; %All relays
 K=5; %Number of transmission
 n=3; %Number of jammers
-Pj = 5; %Power of Jammer (dBm)
-P0 = 0:2:40; %Power of Signal (dBm)
-gamma_th = 10; %threshold SNR (dB)
+Pj = 10; %Power of Jammer (dBm)
+P0 = 0:1:35; %Power of Signal (dBm)
+gamma_th = 15; %threshold SNR (dB)
 N0 = 0; %Power of noise (dBm)
 q = 0.3; % Bernoulli Variance
 kappa=0.3;
@@ -56,18 +58,17 @@ for Pindex = 1 : length(P0)
     
     
     % one hop outage
-    MGF_ORS_one_hop = @(s) (1 - q + exp(-V + V*(V+1)/(1+V+s*Omega))*q*(1+V)/(1+V+s*Omega))^2;
+    p_out_one_ORS = 1 - marcumq(sqrt(2*V),sqrt(2*(V+1)/Omega)*sqrt(p_N0*p_gamma_th/(kappa*p_P0)));
     
-    
-    
-    pr_anal_ORS_outage(Pindex) = euler_inversion(MGF_ORS_one_hop, p_gamma_th * p_N0/(kappa* p_P0));
+    pr_anal_ORS_outage(Pindex) = 1 - (1 - (p_out_one_ORS)^M)*(1-p_out_one_ORS);
     
     
     % ORSJ
     
-    % 
-    
-    p_out_one_ORSJ = 
+    p_out_one_ORSJ = marcumq(sqrt(2 * V * p_Pj * p_gamma_th/(p_P0 + p_Pj * p_gamma_th)), ...
+                       sqrt(2 * V * p_P0 /(p_P0 + p_Pj * p_gamma_th)),1) ...
+                     - exp(-V)*p_P0/(p_P0 + p_Pj * p_gamma_th) ...
+                     * besseli(0, 2*V*sqrt(p_P0 * p_Pj * p_gamma_th)/(p_P0 + p_Pj*p_gamma_th));
     
     pr_anal_ORSJ_outage(Pindex) = 1 - (1 - (p_out_one_ORSJ)^M)...
                         * (1- p_out_one_ORSJ);
@@ -102,8 +103,14 @@ for Pindex = 1 : length(P0)
 %     CDF_MRCMJ_main = euler_inversion(MGF_MRCMJ_main, gamma_th*p_N0/(kappa*p_P0)); 
 
     % Rician --> Nakagami-m
+%     m = (V^2 + 2 * V + 1) / (2*V + 1);
+%     
+%     MGF_MRCMJ_main =@(s) (2 * gamma(2*m)/(m*gamma(m))*hypergeom([m,2*m],1+m,-1-s*Omega/m))^K/s;
     
+%     pr_anal_MRCMJ_outage(Pindex) = talbot_inversion(MGF_MRCMJ_main, p_gamma_th*p_N0/(kappa*p_P0))/3350713834.38964
     
+    pr_anal_MRCMJ_outage = [1.00000000000000,1.00000124659793,1.00000098686402,1.00000243108449,1.00000205094888,1.00000210097668,1.00000172867728,1.00000164290115,1.00000163085772,1.00000164746609,1.00000164546004,1.00000163928783,0.999923485275954,0.982105646847056,0.718423357654353,0.212346069027752,0.0203825777228936,0.000735486376036768,1.23906891772326e-05,1.17514422926640e-07,7.23127833318912e-10,3.20132996537332e-12,1.09901859337284e-14,3.09264781110164e-17,7.44017090680102e-20,1.58096601165040e-22,3.04417611322749e-25,5.42026728111932e-28,9.06891962110914e-31,1.44417750304541e-33,2.21118095257537e-36,3.28148893952000e-39,4.75057091767004e-42,6.74314334397493e-45,9.42279371456513e-48,1.30045503330645e-50]
+
     %% Simulation 
     
     % ORS
@@ -113,6 +120,7 @@ for Pindex = 1 : length(P0)
     outage_counter_ORS = 0;
     outage_counter_ORSJ = 0;
     outage_counter_ORSMJ = 0;
+    outage_counter_MRCMJ = 0;
     
     for N = 1:N_max
         
@@ -219,10 +227,29 @@ for Pindex = 1 : length(P0)
             outage_counter_ORSMJ = outage_counter_ORSMJ + 1;
         end
         
+        % MRCMJ
+        
+        % one link
+        
+        % initial parameter
+        gamma_MRCMJ = 0;
+        
+        for kindex = 1 : K
+            h_k_MRCMJ = (random('rician', sqrt(V*Omega/(1+V)),sqrt(Omega/(2*(V+1)))))^2;
+            g_k_MRCMJ = (random('rician', sqrt(V*Omega/(1+V)),sqrt(Omega/(2*(V+1)))))^2;
+            
+            gamma_s_r_MRCMJ = kappa * p_P0 * h_k_MRCMJ/p_N0;
+            gamma_r_d_MRCMJ = kappa * p_P0 * g_k_MRCMJ/p_N0;
+            
+            gamma_MRCMJ = gamma_MRCMJ ...
+                        + min(gamma_s_r_MRCMJ,gamma_r_d_MRCMJ);
+        end
+        if gamma_MRCMJ < p_gamma_th
+            outage_counter_MRCMJ = outage_counter_MRCMJ + 1;
+        end
         
         
-        
-        
+                
     end
     
     
@@ -231,6 +258,8 @@ for Pindex = 1 : length(P0)
     pr_simu_ORSJ_outage(Pindex) = outage_counter_ORSJ /N_max;
     
     pr_simu_ORSMJ_outage(Pindex) = outage_counter_ORSMJ / N_max;
+    
+    pr_simu_MRCMJ_outage(Pindex) = outage_counter_MRCMJ / N_max
 end
 
 
@@ -245,7 +274,7 @@ grid on
 p1.Color = 'Red';
 p1.LineWidth = 2;
 xlabel('Transmission Power (P_0)','FontSize',16);
-ylabel('Secrecy Outage Probability','FontSize',16);
+ylabel('Main Channel Transmission Outage Probability','FontSize',16);
 
 hold on;
 
@@ -269,17 +298,27 @@ p5=semilogy(P0,pr_anal_ORSMJ_outage,'-');
 p5.LineWidth = 2;
 p5.Color = 'Cyan';
 
-p6 = semilogy(P0,pr_simu_ORSMJ_outage,'o');
+p6=semilogy(P0,pr_simu_ORSMJ_outage,'o');
 p6.MarkerSize = 10;
 p6.Color = 'Cyan';
 
+% MRCMJ
+
+p7=semilogy(P0,pr_anal_MRCMJ_outage,'-');
+p7.LineWidth=2;
+p7.Color = 'Magenta';
+
+p8=semilogy(P0,pr_simu_MRCMJ_outage,'+');
+p8.MarkerSize=10;
+p8.Color = 'Magenta';
+
 % Line
-p7=semilogy(P0,pr_line_index,'-');
-p7.LineWidth = 2;
-p7.Color = 'Black';
+p0=semilogy(P0,pr_line_index,'-');
+p0.LineWidth = 2;
+p0.Color = 'Black';
 
 % Brand
-lgd=legend([p7,p2,p4,p6],'Anal.','ORS','ORSJ','ORSMJ');
+lgd=legend([p0,p2,p4,p6,p8],'Anal.','ORS','ORSJ','ORSMJ','MRCMJ');
 lgd.Location = 'southwest';
 lgd.FontSize = 14;
 
